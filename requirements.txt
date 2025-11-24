@@ -1,0 +1,7 @@
+dashscope
+python-dotenv
+pandas
+Pillow
+fastapi
+uvicorn
+python-multipart
