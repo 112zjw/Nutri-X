@@ -2,7 +2,7 @@ import axios from "axios";
 import { store } from "../store";
 
 const api = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: "/api", // 使用相对路径，配合开发环境代理和生产环境 Nginx 反向代理
   timeout: 60000, // 识别图片可能需要较长时间
 });
 
@@ -27,8 +27,8 @@ export const identifyIngredients = (formData) => {
   });
 };
 
-export const recommendRecipes = (ingredients) => {
-  return api.post("/recommend", { ingredients });
+export const recommendRecipes = (ingredients, userProfile = {}) => {
+  return api.post("/recommend", { ingredients, user_profile: userProfile });
 };
 
 export const evaluateMealPlan = (plan) => {

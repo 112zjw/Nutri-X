@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import uvicorn
@@ -34,6 +36,7 @@ def configure_api_key(x_api_key: Optional[str] = Header(None)):
 
 class IngredientsRequest(BaseModel):
     ingredients: List[str]
+    user_profile: Optional[Dict] = {}
 
 class MealPlanRequest(BaseModel):
     plan: Dict[str, List[str]]
@@ -88,7 +91,7 @@ async def identify_ingredients(file: UploadFile = File(...), x_api_key: Optional
 async def recommend_recipes(request: IngredientsRequest, x_api_key: Optional[str] = Header(None)):
     try:
         configure_api_key(x_api_key)
-        recommendations = utils.recommend_recipes(request.ingredients)
+        recommendations = utils.recommend_recipes(request.ingredients, request.user_profile)
         return {"status": "success", "data": recommendations}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -101,6 +104,31 @@ async def evaluate_plan(request: MealPlanRequest, x_api_key: Optional[str] = Hea
         return {"status": "success", "report": report}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# -------------------------------------------------------------------------
+# 静态文件服务 (前端合并到后端)
+# -------------------------------------------------------------------------
+
+# 1. 挂载静态资源目录 (JS, CSS, Images)
+# 确保 dist/assets 存在才挂载，避免开发环境报错
+if os.path.exists("dist/assets"):
+    app.mount("/assets", StaticFiles(directory="dist/assets"), name="assets")
+
+# 2. SPA 路由捕获 (处理 Vue Router 的 History 模式)
+# 必须放在所有 API 路由之后
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # 尝试直接访问文件 (如 favicon.ico, robots.txt)
+    file_path = os.path.join("dist", full_path)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # 如果文件不存在，且不是 API 请求，则返回 index.html
+    # 让前端路由去处理页面跳转
+    if os.path.exists("dist/index.html"):
+        return FileResponse("dist/index.html")
+    
+    return {"error": "Frontend not built or dist folder missing"}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

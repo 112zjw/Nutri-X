@@ -19,6 +19,34 @@
           </el-checkbox-button>
         </el-checkbox-group>
 
+        <el-divider content-position="center">个性化设置 (可选)</el-divider>
+
+        <el-form :inline="true" class="profile-form">
+          <el-form-item label="身高 (cm)">
+            <el-input-number v-model="height" :min="50" :max="250" />
+          </el-form-item>
+          <el-form-item label="体重 (kg)">
+            <el-input-number v-model="weight" :min="20" :max="200" />
+          </el-form-item>
+          <el-form-item label="膳食目标">
+            <el-select
+              v-model="goal"
+              placeholder="请选择目标"
+              style="width: 150px"
+            >
+              <el-option label="均衡饮食" value="均衡饮食" />
+              <el-option label="减脂" value="减脂" />
+              <el-option label="增肌" value="增肌" />
+              <el-option label="低碳水" value="低碳水" />
+              <el-option label="高蛋白" value="高蛋白" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+
+        <div v-if="bmi" class="bmi-display">
+          您的 BMI: <strong>{{ bmi }}</strong> ({{ bmiStatus }})
+        </div>
+
         <div class="actions">
           <el-button
             type="primary"
@@ -55,6 +83,14 @@
             </template>
 
             <p class="description">{{ recipe.description }}</p>
+
+            <el-alert
+              v-if="recipe.recommendation_reason"
+              :title="recipe.recommendation_reason"
+              type="success"
+              :closable="false"
+              class="reason-alert"
+            />
 
             <div class="tags">
               <el-tag
@@ -117,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { store } from "../store";
 import { recommendRecipes } from "../api";
 import { ElMessage, ElNotification } from "element-plus";
@@ -125,6 +161,26 @@ import { VideoPlay } from "@element-plus/icons-vue";
 
 const selectedIngredients = ref([]);
 const loading = ref(false);
+const height = ref(null);
+const weight = ref(null);
+const goal = ref("均衡饮食");
+
+const bmi = computed(() => {
+  if (height.value && weight.value) {
+    const h = height.value / 100;
+    return (weight.value / (h * h)).toFixed(1);
+  }
+  return null;
+});
+
+const bmiStatus = computed(() => {
+  if (!bmi.value) return "";
+  const val = parseFloat(bmi.value);
+  if (val < 18.5) return "偏瘦";
+  if (val < 24) return "正常";
+  if (val < 28) return "超重";
+  return "肥胖";
+});
 
 const generateRecipes = async () => {
   if (selectedIngredients.value.length === 0) {
@@ -134,7 +190,13 @@ const generateRecipes = async () => {
 
   loading.value = true;
   try {
-    const res = await recommendRecipes(selectedIngredients.value);
+    const userProfile = {
+      height: height.value,
+      weight: weight.value,
+      bmi: bmi.value,
+      goal: goal.value,
+    };
+    const res = await recommendRecipes(selectedIngredients.value, userProfile);
     if (res.data.status === "success") {
       store.setRecommendations(res.data.data);
       ElMessage.success("菜谱生成成功！");
@@ -164,6 +226,18 @@ const addToPlan = (meal, dishName) => {
 }
 .selection-card {
   margin-bottom: 30px;
+}
+.profile-form {
+  margin-top: 20px;
+  text-align: center;
+}
+.bmi-display {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #666;
+}
+.reason-alert {
+  margin-bottom: 15px;
 }
 .actions {
   margin-top: 20px;

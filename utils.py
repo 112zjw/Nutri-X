@@ -103,12 +103,22 @@ def get_nutrition_info(ingredients_list):
         print(f"Exception: {str(e)}")
         return []
 
-def recommend_recipes(selected_ingredients):
+def recommend_recipes(selected_ingredients, user_profile=None):
     """
-    根据选择的食材推荐菜肴
+    根据选择的食材和用户画像推荐菜肴
     """
+    profile_text = ""
+    if user_profile and user_profile.get('bmi'):
+        profile_text = f"""
+        用户身体数据：
+        - BMI: {user_profile.get('bmi')}
+        - 膳食目标: {user_profile.get('goal', '均衡饮食')}
+        请根据用户的BMI和目标，调整推荐的菜谱（例如减脂期推荐低脂低碳，增肌期推荐高蛋白）。
+        """
+
     prompt = f"""
     我手头有以下食材：{', '.join(selected_ingredients)}。
+    {profile_text}
     请为我推荐 3 道适合用这些食材制作的佳肴。
     请以严格的 JSON 格式返回数据，不要包含 Markdown 格式标记。
     返回格式为一个列表，每个元素包含：
@@ -118,6 +128,7 @@ def recommend_recipes(selected_ingredients):
     - steps: 详细做法步骤（字符串列表）
     - nutrition_eval: 营养价值评价
     - taste_eval: 口感偏好评价
+    - recommendation_reason: 结合用户BMI和目标的推荐理由（如果提供了用户数据）
     - video_keyword: 用于搜索该菜做法视频的关键词（例如“西红柿炒鸡蛋 做法”）
     """
     
